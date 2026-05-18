@@ -251,6 +251,35 @@ button:disabled {
     font-style: italic;
 }
 
+/* Exit Button */
+.exit-btn {
+    width: auto;
+    padding: 8px 12px;
+    margin: 0;
+    background: linear-gradient(95deg, #f44336, #e53935);
+    font-size: 1.2rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.exit-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 2px 8px rgba(244, 67, 54, 0.4);
+}
+
+.exit-btn:active {
+    transform: scale(0.95);
+}
+
+/* Quiz Header */
+.quiz-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
 /* Question Card */
 .question-card {
     background: rgba(0, 0, 0, 0.4);
@@ -281,6 +310,7 @@ button:disabled {
     transition: all 0.2s;
     border: 1px solid rgba(253, 187, 45, 0.3);
     font-size: 0.95rem;
+    color: #fff;
 }
 
 .option:hover {
@@ -309,6 +339,16 @@ button:disabled {
 .option.disabled {
     cursor: not-allowed;
     opacity: 0.7;
+}
+
+.option-placeholder {
+    grid-column: 1 / -1;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.6);
+    padding: 20px;
+    border: 2px dashed rgba(253, 187, 45, 0.3);
+    border-radius: 12px;
+    font-style: italic;
 }
 
 /* Timer Ring */
@@ -374,7 +414,8 @@ button:disabled {
     padding: 12px 20px;
     border-radius: 60px;
     font-weight: bold;
-    margin-bottom: 15px;
+    margin-bottom: 0;
+    flex: 1;
 }
 
 .player-stats span:first-child {
@@ -509,6 +550,15 @@ button:disabled {
     
     .player-stats {
         font-size: 0.85rem;
+    }
+    
+    .quiz-header {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .exit-btn {
+        width: 50px;
     }
 }
 
