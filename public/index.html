@@ -43,9 +43,12 @@
         
         <!-- Quiz Screen -->
         <div id="quiz-screen" class="screen">
-            <div class="player-stats">
-                <span>🧠 <span id="current-player">Player</span></span>
-                <span>🏆 SCORE: <span id="score-display">0</span></span>
+            <div class="quiz-header">
+                <div class="player-stats">
+                    <span>🧠 <span id="current-player">Player</span></span>
+                    <span>🏆 SCORE: <span id="score-display">0</span></span>
+                </div>
+                <button id="exit-btn" class="exit-btn" title="Exit Quiz">✕</button>
             </div>
             <div class="progress-container">
                 <div class="progress-bar">
@@ -59,7 +62,9 @@
             </div>
             <div class="question-card">
                 <div class="question" id="question-text">Loading...</div>
-                <div class="options" id="options-container"></div>
+                <div class="options" id="options-container">
+                    <div class="option-placeholder">Click an answer option...</div>
+                </div>
             </div>
         </div>
         
