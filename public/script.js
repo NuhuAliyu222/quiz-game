@@ -33,6 +33,7 @@ const timerDisplay = document.getElementById('timer');
 const questionCounter = document.getElementById('question-counter');
 const questionText = document.getElementById('question-text');
 const optionsContainer = document.getElementById('options-container');
+const exitBtn = document.getElementById('exit-btn');
 
 // Results
 const finalScoreDiv = document.getElementById('final-score');
@@ -42,6 +43,7 @@ const playAgainBtn = document.getElementById('play-again-btn');
 function showNotification(msg, isError = false) {
     notification.textContent = msg;
     notification.classList.add('show');
+    notification.classList.toggle('error', isError);
     setTimeout(() => notification.classList.remove('show'), 2500);
 }
 
@@ -117,12 +119,16 @@ socket.on('new-question', (data) => {
 
 socket.on('timer-update', (timeLeft) => {
     timerDisplay.textContent = timeLeft;
+    if (timeLeft <= 10) {
+        timerDisplay.classList.add('warning');
+    } else {
+        timerDisplay.classList.remove('warning');
+    }
 });
 
 socket.on('answer-result', (data) => {
     if (data.correct) {
         showNotification(`✅ Correct! +${data.points} points`);
-        // Update score display (will be updated via leaderboard)
     } else {
         showNotification(`❌ Wrong! Correct answer: ${data.correctAnswer}`);
     }
@@ -138,7 +144,6 @@ socket.on('leaderboard-update', (leaderboard) => {
 socket.on('time-up', (data) => {
     if (!answerLocked) {
         answerLocked = true;
-        // Highlight correct answer
         const options = document.querySelectorAll('.option');
         options.forEach((opt, idx) => {
             opt.style.pointerEvents = 'none';
@@ -169,7 +174,7 @@ socket.on('quiz-ended', (results) => {
             <span>${idx + 1}. ${result.name} ${result.name === currentPlayer?.name ? '👑' : ''}</span>
             <span style="color:#fdbb2d; font-weight:bold;">${result.score} pts</span>
         `;
-        if (idx < 3) item.style.background = 'rgba(253, 187, 45, 0.2)';
+        if (idx < 3) item.classList.add(`top-${idx + 1}`);
         leaderboardContainer.appendChild(item);
     });
 });
@@ -185,10 +190,13 @@ function submitAnswer(answerIndex) {
     answerLocked = true;
     socket.emit('submit-answer', { answerIndex });
     
-    // Disable all options
+    // Highlight selected option
     const options = document.querySelectorAll('.option');
-    options.forEach(opt => {
+    options.forEach((opt, idx) => {
         opt.style.pointerEvents = 'none';
+        if (idx === answerIndex) {
+            opt.classList.add('selected');
+        }
     });
 }
 
@@ -215,6 +223,12 @@ function startQuiz() {
     }
 }
 
+function exitQuiz() {
+    if (confirm('Are you sure you want to exit the quiz?')) {
+        location.reload();
+    }
+}
+
 function playAgain() {
     location.reload();
 }
@@ -222,6 +236,7 @@ function playAgain() {
 // Event listeners
 joinBtn.addEventListener('click', joinQuiz);
 if (startGameBtn) startGameBtn.addEventListener('click', startQuiz);
+if (exitBtn) exitBtn.addEventListener('click', exitQuiz);
 playAgainBtn.addEventListener('click', playAgain);
 
 // Enter key support
