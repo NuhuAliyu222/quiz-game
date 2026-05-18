@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Computer Science Quiz  | Real-time Multiplayer Quiz</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <div class="notification" id="notification"></div>
+    
+    <div class="container">
+        <div class="logo-badge">
+            <div class="logo-placeholder"><img src="logo.PNG" alt="logo"></div>
+        </div>
+        <h1 style="color: wheat;">⚡COMPUTER SCIENCE QUIZ</h1>
+        <p class="subtitle" style="color: wheat;">Real-time Multiplayer Challenge</p>
+        
+        <!-- Login Screen -->
+        <div id="login-screen" class="screen active">
+            <div class="info-box">🎓 Sokoto State University</div>
+            <input type="text" id="player-name" placeholder="Enter your name" autocomplete="off">
+            <input type="password" id="quiz-password" placeholder="Quiz Access Key">
+            <button id="join-btn">🚀 JOIN ARENA</button>
+            <p class="hint" style="color: white; font-weight: bold; font-style: italic; font-size: 12px;">DEVELOPED BY YOUNG INNOVATIONS</p>
+        </div>
+        
+        <!-- Lobby Screen -->
+        <div id="lobby-screen" class="screen">
+            <h2 style="color: white;">🎮 Game Lobby</h2>
+            <div id="lobby-status">
+                <div class="stats-grid">
+                    <div class="stat-card">👥 Players: <span id="player-count">0</span></div>
+                    <div class="stat-card">🎯 Status: <span id="game-status">Waiting</span></div>
+                </div>
+            </div>
+            <div id="players-list" class="players-grid"></div>
+            <div id="host-controls" style="display: none;">
+                <button id="start-game-btn" class="start-btn">▶ START QUIZ</button>
+            </div>
+            <p class="waiting-text">Waiting for host to start the quiz...</p>
+        </div>
+        
+        <!-- Quiz Screen -->
+        <div id="quiz-screen" class="screen">
+            <div class="player-stats">
+                <span>🧠 <span id="current-player">Player</span></span>
+                <span>🏆 SCORE: <span id="score-display">0</span></span>
+            </div>
+            <div class="progress-container">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+                <span id="question-counter" style="color: white;">Question 1/50</span>
+            </div>
+            <div class="timer-ring">
+                <span style="color: white;">⏱️ TIME LEFT</span>
+                <span class="timer" id="timer">30</span>
+            </div>
+            <div class="question-card">
+                <div class="question" id="question-text">Loading...</div>
+                <div class="options" id="options-container"></div>
+            </div>
+        </div>
+        
+        <!-- Results Screen -->
+        <div id="results-screen" class="screen">
+            <h2 style="color: white;">📊 FINAL STANDINGS</h2>
+            <div id="final-score" class="final-score">0 pts</div>
+            <h3 style="color: white;">🏅 Leaderboard</h3>
+            <div id="leaderboard-container"></div>
+            <button id="play-again-btn">🔄 NEW GAME</button>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/script.js"></script>
+</body>
+</html>
