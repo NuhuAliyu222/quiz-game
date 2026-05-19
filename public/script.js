@@ -115,6 +115,7 @@ socket.on('new-question', (data) => {
     });
     
     timerDisplay.textContent = data.timeLimit;
+    timerDisplay.classList.remove('warning');
     
     // Start client-side timer for independent mode
     if (data.mode === 'independent') {
@@ -161,6 +162,10 @@ socket.on('leaderboard-update', (leaderboard) => {
 socket.on('time-up', (data) => {
     if (!answerLocked) {
         answerLocked = true;
+        
+        // Clear client-side timer
+        if (window.clientTimer) clearInterval(window.clientTimer);
+        
         const options = document.querySelectorAll('.option');
         options.forEach((opt, idx) => {
             opt.style.pointerEvents = 'none';
@@ -169,10 +174,6 @@ socket.on('time-up', (data) => {
             }
         });
         showNotification(`⏰ Time's up! Answer: ${data.correctText}`);
-        
-        setTimeout(() => {
-            // Wait for next question
-        }, 2000);
     }
 });
 
