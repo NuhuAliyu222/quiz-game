@@ -115,6 +115,23 @@ socket.on('new-question', (data) => {
     });
     
     timerDisplay.textContent = data.timeLimit;
+    
+    // Start client-side timer for independent mode
+    if (data.mode === 'independent') {
+        let timeRemaining = data.timeLimit;
+        if (window.clientTimer) clearInterval(window.clientTimer);
+        window.clientTimer = setInterval(() => {
+            timeRemaining--;
+            timerDisplay.textContent = timeRemaining;
+            if (timeRemaining <= 10) {
+                timerDisplay.classList.add('warning');
+            }
+            if (timeRemaining <= 0) {
+                clearInterval(window.clientTimer);
+                answerLocked = true;
+            }
+        }, 1000);
+    }
 });
 
 socket.on('timer-update', (timeLeft) => {
