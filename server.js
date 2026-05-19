@@ -42,7 +42,8 @@ let gameState = {
   timer: null,
   timeLeft: 30,
   answerLocked: false,
-  hostSocketId: null
+  hostSocketId: null,
+  waitingForAnswers: false // Track if we're waiting for all players to answer
 };
 
 const QUESTIONS = quizQuestions;
@@ -68,12 +69,35 @@ function broadcastLeaderboard() {
   io.emit('leaderboard-update', leaderboard);
 }
 
+// Check if all players have answered
+function checkAllPlayersAnswered() {
+  for (let p of gameState.players.values()) {
+    if (!p.hasAnswered) {
+      return false;
+    }
+  }
+  return true;
+}
+
+// Proceed to next question
+function proceedToNextQuestion() {
+  if (gameState.timer) clearInterval(gameState.timer);
+  gameState.answerLocked = true;
+  gameState.waitingForAnswers = false;
+  
+  setTimeout(() => {
+    gameState.currentQuestion++;
+    sendQuestion();
+  }, 2000);
+}
+
 async function startQuiz() {
   if (gameState.isActive) return;
   
   gameState.isActive = true;
   gameState.currentQuestion = 0;
   gameState.answerLocked = false;
+  gameState.waitingForAnswers = false;
   
   // Reset all player scores
   for (let player of gameState.players.values()) {
@@ -96,6 +120,7 @@ async function sendQuestion() {
   }
   
   gameState.answerLocked = false;
+  gameState.waitingForAnswers = true;
   
   // Reset player answered status
   for (let player of gameState.players.values()) {
@@ -120,9 +145,10 @@ async function sendQuestion() {
     gameState.timeLeft--;
     io.emit('timer-update', gameState.timeLeft);
     
-    if (gameState.timeLeft <= 0 && !gameState.answerLocked) {
+    if (gameState.timeLeft <= 0) {
       clearInterval(gameState.timer);
       gameState.answerLocked = true;
+      gameState.waitingForAnswers = false;
       
       // Reveal correct answer
       const currentQ = QUESTIONS[gameState.currentQuestion];
@@ -143,6 +169,7 @@ async function sendQuestion() {
 function endQuiz() {
   if (gameState.timer) clearInterval(gameState.timer);
   gameState.isActive = false;
+  gameState.waitingForAnswers = false;
   
   const finalResults = Array.from(gameState.players.values())
     .sort((a, b) => b.score - a.score)
@@ -254,23 +281,9 @@ io.on('connection', (socket) => {
     // Update scores for everyone
     broadcastLeaderboard();
     
-    // Check if all players answered
-    let allAnswered = true;
-    for (let p of gameState.players.values()) {
-      if (!p.hasAnswered && p.id !== gameState.hostSocketId) {
-        allAnswered = false;
-        break;
-      }
-    }
-    
-    if (allAnswered && !gameState.answerLocked) {
-      clearInterval(gameState.timer);
-      gameState.answerLocked = true;
-      
-      setTimeout(() => {
-        gameState.currentQuestion++;
-        sendQuestion();
-      }, 2000);
+    // Check if all players have answered
+    if (gameState.waitingForAnswers && checkAllPlayersAnswered()) {
+      proceedToNextQuestion();
     }
   });
   
