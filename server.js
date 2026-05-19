@@ -88,10 +88,8 @@ function proceedToNextQuestion() {
   if (gameState.timer) clearInterval(gameState.timer);
   gameState.answerLocked = true;
   
-  setTimeout(() => {
-    gameState.currentQuestion++;
-    sendQuestion();
-  }, 2000);
+  gameState.currentQuestion++;
+  sendQuestion();
 }
 
 // Send next question to individual player (independent mode)
@@ -226,8 +224,7 @@ async function sendQuestion() {
       });
       
       // Move to next question immediately
-      gameState.currentQuestion++;
-      sendQuestion();
+      proceedToNextQuestion();
     }
   }, 1000);
 }
