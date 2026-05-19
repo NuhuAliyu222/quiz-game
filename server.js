@@ -225,11 +225,9 @@ async function sendQuestion() {
         correctText: currentQ.options[currentQ.correct]
       });
       
-      // Move to next question after delay
-      setTimeout(() => {
-        gameState.currentQuestion++;
-        sendQuestion();
-      }, 3000);
+      // Move to next question immediately
+      gameState.currentQuestion++;
+      sendQuestion();
     }
   }, 1000);
 }
