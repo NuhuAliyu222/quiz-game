@@ -348,7 +348,7 @@ io.on('connection', (socket) => {
     player.hasAnswered = true;
     
     if (isCorrect) {
-      const pointsEarned = Math.max(5, Math.floor(gameState.timeLeft / 3) + 5);
+      const pointsEarned = 2;
       player.score += pointsEarned;
       
       socket.emit('answer-result', {
