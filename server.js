@@ -20,7 +20,7 @@ const io = socketIo(server, {
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, '../public')));
 
 // Rate limiting
 const limiter = rateLimit({
@@ -42,9 +42,7 @@ let gameState = {
   timer: null,
   timeLeft: 30,
   answerLocked: false,
-  hostSocketId: null,
-  questionStartTime: null,
-  multiplayerMode: 'independent' // 'independent' or 'synchronized'
+  hostSocketId: null
 };
 
 const QUESTIONS = quizQuestions;
@@ -54,9 +52,7 @@ function broadcastPlayers() {
   const playersList = Array.from(gameState.players.values()).map(p => ({
     id: p.id,
     name: p.name,
-    score: p.score,
-    currentQuestion: p.currentQuestion,
-    hasAnswered: p.hasAnswered
+    score: p.score
   }));
   io.emit('players-update', playersList);
 }
@@ -67,78 +63,9 @@ function broadcastLeaderboard() {
     .map((p, idx) => ({
       rank: idx + 1,
       name: p.name,
-      score: p.score,
-      currentQuestion: p.currentQuestion
+      score: p.score
     }));
   io.emit('leaderboard-update', leaderboard);
-}
-
-// Check if all players have answered (for synchronized mode)
-function checkAllPlayersAnswered() {
-  for (let p of gameState.players.values()) {
-    if (!p.hasAnswered && p.currentQuestion === gameState.currentQuestion) {
-      return false;
-    }
-  }
-  return true;
-}
-
-// Proceed to next question (synchronized mode)
-function proceedToNextQuestion() {
-  if (gameState.timer) clearInterval(gameState.timer);
-  gameState.answerLocked = true;
-  
-  gameState.currentQuestion++;
-  sendQuestion();
-}
-
-// Send next question to individual player (independent mode)
-function sendNextQuestionToPlayer(socket) {
-  const player = gameState.players.get(socket.id);
-  if (!player) return;
-  
-  player.currentQuestion++;
-  player.hasAnswered = false;
-  
-  // Check if player completed all questions
-  if (player.currentQuestion >= QUESTIONS.length) {
-    socket.emit('player-quiz-complete', {
-      finalScore: player.score,
-      totalQuestions: QUESTIONS.length
-    });
-    
-    // Broadcast updated leaderboard
-    broadcastLeaderboard();
-    
-    // Check if all players finished
-    checkAllPlayersCompleted();
-    return;
-  }
-  
-  // Send next question to player
-  const question = QUESTIONS[player.currentQuestion];
-  const timeLimit = process.env.QUESTION_TIME || 30;
-  
-  socket.emit('new-question', {
-    index: player.currentQuestion,
-    total: QUESTIONS.length,
-    question: question.question,
-    options: question.options,
-    timeLimit: timeLimit,
-    mode: 'independent'
-  });
-  
-  socket.emit('timer-update', timeLimit);
-}
-
-// Check if all players completed quiz
-function checkAllPlayersCompleted() {
-  for (let player of gameState.players.values()) {
-    if (player.currentQuestion < QUESTIONS.length) {
-      return false;
-    }
-  }
-  return true;
 }
 
 async function startQuiz() {
@@ -147,34 +74,19 @@ async function startQuiz() {
   gameState.isActive = true;
   gameState.currentQuestion = 0;
   gameState.answerLocked = false;
-  gameState.questionStartTime = Date.now();
   
-  // Reset all player scores and progress
+  // Reset all player scores
   for (let player of gameState.players.values()) {
     player.score = 0;
     player.hasAnswered = false;
-    player.currentQuestion = 0;
   }
-  
-  const mode = gameState.multiplayerMode;
   
   io.emit('quiz-started', {
     totalQuestions: QUESTIONS.length,
-    mode: mode,
     firstQuestion: QUESTIONS[0]
   });
   
-  if (mode === 'synchronized') {
-    await sendQuestion();
-  } else if (mode === 'independent') {
-    // Send first question to all players
-    for (let [socketId, player] of gameState.players.entries()) {
-      const socket = io.sockets.sockets.get(socketId);
-      if (socket) {
-        sendNextQuestionToPlayer(socket);
-      }
-    }
-  }
+  await sendQuestion();
 }
 
 async function sendQuestion() {
@@ -184,13 +96,10 @@ async function sendQuestion() {
   }
   
   gameState.answerLocked = false;
-  gameState.questionStartTime = Date.now();
   
-  // Reset player answered status for synchronized mode
+  // Reset player answered status
   for (let player of gameState.players.values()) {
-    if (player.currentQuestion === gameState.currentQuestion) {
-      player.hasAnswered = false;
-    }
+    player.hasAnswered = false;
   }
   
   const question = QUESTIONS[gameState.currentQuestion];
@@ -201,8 +110,7 @@ async function sendQuestion() {
     total: QUESTIONS.length,
     question: question.question,
     options: question.options,
-    timeLimit: gameState.timeLeft,
-    mode: 'synchronized'
+    timeLimit: gameState.timeLeft
   });
   
   // Start timer
@@ -212,7 +120,7 @@ async function sendQuestion() {
     gameState.timeLeft--;
     io.emit('timer-update', gameState.timeLeft);
     
-    if (gameState.timeLeft <= 0) {
+    if (gameState.timeLeft <= 0 && !gameState.answerLocked) {
       clearInterval(gameState.timer);
       gameState.answerLocked = true;
       
@@ -223,10 +131,11 @@ async function sendQuestion() {
         correctText: currentQ.options[currentQ.correct]
       });
       
-      // Move to next question after a short delay (1.5 seconds)
+      // Move to next question after delay
       setTimeout(() => {
-        proceedToNextQuestion();
-      }, 1500);
+        gameState.currentQuestion++;
+        sendQuestion();
+      }, 3000);
     }
   }, 1000);
 }
@@ -253,7 +162,7 @@ io.on('connection', (socket) => {
   
   // Handle player join
   socket.on('player-join', (data) => {
-    const { name, password, mode } = data;
+    const { name, password } = data;
     
     // Check password
     if (password !== process.env.QUIZ_PASSWORD) {
@@ -281,18 +190,12 @@ io.on('connection', (socket) => {
       return;
     }
     
-    // Set multiplayer mode on first player join
-    if (gameState.players.size === 0 && mode) {
-      gameState.multiplayerMode = mode;
-    }
-    
     // Add player
     const player = {
       id: socket.id,
       name: name,
       score: 0,
       hasAnswered: false,
-      currentQuestion: 0,
       joinedAt: Date.now()
     };
     
@@ -300,52 +203,39 @@ io.on('connection', (socket) => {
     socket.emit('join-success', {
       playerId: socket.id,
       playerName: name,
-      gameActive: gameState.isActive,
-      mode: gameState.multiplayerMode
+      gameActive: gameState.isActive
     });
     
     broadcastPlayers();
     
     // If game already active, send current state
-    if (gameState.isActive) {
-      if (gameState.multiplayerMode === 'synchronized' && gameState.currentQuestion < QUESTIONS.length) {
-        const currentQ = QUESTIONS[gameState.currentQuestion];
-        socket.emit('new-question', {
-          index: gameState.currentQuestion,
-          total: QUESTIONS.length,
-          question: currentQ.question,
-          options: currentQ.options,
-          timeLimit: gameState.timeLeft,
-          mode: 'synchronized'
-        });
-        socket.emit('timer-update', gameState.timeLeft);
-      } else if (gameState.multiplayerMode === 'independent' && player.currentQuestion < QUESTIONS.length) {
-        sendNextQuestionToPlayer(socket);
-      }
+    if (gameState.isActive && gameState.currentQuestion < QUESTIONS.length) {
+      const currentQ = QUESTIONS[gameState.currentQuestion];
+      socket.emit('new-question', {
+        index: gameState.currentQuestion,
+        total: QUESTIONS.length,
+        question: currentQ.question,
+        options: currentQ.options,
+        timeLimit: gameState.timeLeft
+      });
+      socket.emit('timer-update', gameState.timeLeft);
     }
   });
   
   // Handle answer submission
   socket.on('submit-answer', (data) => {
-    if (!gameState.isActive) return;
+    if (!gameState.isActive || gameState.answerLocked) return;
     
     const player = gameState.players.get(socket.id);
-    if (!player) return;
+    if (!player || player.hasAnswered) return;
     
-    const mode = gameState.multiplayerMode;
-    const questionIndex = player.currentQuestion;
-    
-    // Security: check if player already answered this question
-    if (player.hasAnswered && mode === 'synchronized') return;
-    if (questionIndex >= QUESTIONS.length) return;
-    
-    const currentQ = QUESTIONS[questionIndex];
+    const currentQ = QUESTIONS[gameState.currentQuestion];
     const isCorrect = (data.answerIndex === currentQ.correct);
     
     player.hasAnswered = true;
     
     if (isCorrect) {
-      const pointsEarned = 2;
+      const pointsEarned = Math.max(5, Math.floor(gameState.timeLeft / 3) + 5);
       player.score += pointsEarned;
       
       socket.emit('answer-result', {
@@ -364,42 +254,34 @@ io.on('connection', (socket) => {
     // Update scores for everyone
     broadcastLeaderboard();
     
-    // Handle mode-specific logic
-    if (mode === 'independent') {
-      // Show answer feedback, then move to next question
-      setTimeout(() => {
-        sendNextQuestionToPlayer(socket);
-      }, 1500);
-    } else if (mode === 'synchronized') {
-      // Check if all players have answered
-      if (checkAllPlayersAnswered()) {
-        proceedToNextQuestion();
+    // Check if all players answered
+    let allAnswered = true;
+    for (let p of gameState.players.values()) {
+      if (!p.hasAnswered && p.id !== gameState.hostSocketId) {
+        allAnswered = false;
+        break;
       }
+    }
+    
+    if (allAnswered && !gameState.answerLocked) {
+      clearInterval(gameState.timer);
+      gameState.answerLocked = true;
+      
+      setTimeout(() => {
+        gameState.currentQuestion++;
+        sendQuestion();
+      }, 2000);
     }
   });
   
   // Host start game
-  socket.on('host-start', (data) => {
+  socket.on('host-start', () => {
     if (gameState.players.size === 0) {
       socket.emit('error', 'No players to start');
       return;
     }
-    
-    // Set mode if provided
-    if (data && data.mode) {
-      gameState.multiplayerMode = data.mode;
-    }
-    
     gameState.hostSocketId = socket.id;
     startQuiz();
-  });
-  
-  // Set game mode (before game starts)
-  socket.on('set-game-mode', (data) => {
-    if (!gameState.isActive && gameState.players.size > 0) {
-      gameState.multiplayerMode = data.mode;
-      io.emit('game-mode-updated', { mode: gameState.multiplayerMode });
-    }
   });
   
   // Disconnect
@@ -425,8 +307,7 @@ io.on('connection', (socket) => {
 app.get('/api/players', (req, res) => {
   const players = Array.from(gameState.players.values()).map(p => ({
     name: p.name,
-    score: p.score,
-    currentQuestion: p.currentQuestion
+    score: p.score
   }));
   res.json(players);
 });
@@ -436,14 +317,13 @@ app.get('/api/game-status', (req, res) => {
     isActive: gameState.isActive,
     playerCount: gameState.players.size,
     currentQuestion: gameState.currentQuestion,
-    totalQuestions: QUESTIONS.length,
-    mode: gameState.multiplayerMode
+    totalQuestions: QUESTIONS.length
   });
 });
 
 // Serve frontend
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public/index.html'));
+  res.sendFile(path.join(__dirname, '../public/index.html'));
 });
 
 const PORT = process.env.PORT || 3000;
