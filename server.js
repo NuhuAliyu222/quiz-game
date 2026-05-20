@@ -223,8 +223,10 @@ async function sendQuestion() {
         correctText: currentQ.options[currentQ.correct]
       });
       
-      // Move to next question immediately
-      proceedToNextQuestion();
+      // Move to next question after a short delay (1.5 seconds)
+      setTimeout(() => {
+        proceedToNextQuestion();
+      }, 1500);
     }
   }, 1000);
 }
